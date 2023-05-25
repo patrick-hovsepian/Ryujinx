@@ -105,7 +105,7 @@ namespace Ryujinx.Ava.UI.Windows
 
             ApplicationLibrary.ApplicationCountUpdated += ApplicationLibrary_ApplicationCountUpdated;
             ApplicationLibrary.ApplicationAdded += ApplicationLibrary_ApplicationAdded;
-            ViewModel.ReloadGameList += ReloadGameList;
+            ViewModel.ReloadGameList += () => ReloadGameList(true);
 
             NotificationHelper.SetNotificationManager(this);
         }
@@ -124,7 +124,7 @@ namespace Ryujinx.Ava.UI.Windows
 
             _isLoading = true;
 
-            LoadApplications();
+            LoadApplications(false);
 
             _isLoading = false;
         }
@@ -457,7 +457,7 @@ namespace Ryujinx.Ava.UI.Windows
            });
         }
 
-        public async void LoadApplications()
+        public async void LoadApplications(bool readFromDisk)
         {
             await Dispatcher.UIThread.InvokeAsync(() =>
             {
@@ -470,10 +470,10 @@ namespace Ryujinx.Ava.UI.Windows
                 LocaleManager.Instance.UpdateAndGetDynamicValue(LocaleKeys.StatusBarGamesLoaded, 0, 0);
             });
 
-            ReloadGameList();
+            ReloadGameList(readFromDisk);
         }
 
-        private void ReloadGameList()
+        private void ReloadGameList(bool readFromDisk)
         {
             if (_isLoading)
             {
@@ -482,7 +482,7 @@ namespace Ryujinx.Ava.UI.Windows
 
             _isLoading = true;
 
-            ApplicationLibrary.LoadApplications(ConfigurationState.Instance.Ui.GameDirs.Value, ConfigurationState.Instance.System.Language);
+            ApplicationLibrary.LoadApplications(ConfigurationState.Instance.Ui.GameDirs.Value, ConfigurationState.Instance.System.Language, readFromDisk);
 
             _isLoading = false;
         }
