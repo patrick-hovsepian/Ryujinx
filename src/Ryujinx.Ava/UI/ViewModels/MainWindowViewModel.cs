@@ -77,6 +77,7 @@ namespace Ryujinx.Ava.UI.ViewModels
         private bool _showAll;
         private string _lastScannedAmiiboId;
         private bool _statusBarVisible;
+        private bool _cancelLoadVisible;
         private ReadOnlyObservableCollection<ApplicationData> _appsObservableList;
 
         private string _showUiKey = "F4";
@@ -100,6 +101,7 @@ namespace Ryujinx.Ava.UI.ViewModels
         public ApplicationData GridSelectedApplication;
 
         public event Action ReloadGameList;
+        public event Action CancelGameListReload;
 
         private string TitleName { get; set; }
         internal AppHost AppHost { get; set; }
@@ -239,6 +241,17 @@ namespace Ryujinx.Ava.UI.ViewModels
             }
         }
 
+        public bool CancelRefreshButtonVisbile
+        {
+            get => _cancelLoadVisible;
+            set
+            {
+                _cancelLoadVisible = value;
+
+                OnPropertyChanged();
+            }
+        }
+
         public bool EnableNonGameRunningControls => !IsGameRunning;
 
         public bool ShowFirmwareStatus => !ShowLoadProgress;
@@ -258,6 +271,7 @@ namespace Ryujinx.Ava.UI.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(EnableNonGameRunningControls));
                 OnPropertyChanged(nameof(StatusBarVisible));
+                OnPropertyChanged(nameof(CancelRefreshButtonVisbile));
                 OnPropertyChanged(nameof(ShowFirmwareStatus));
             }
         }
@@ -1365,20 +1379,14 @@ namespace Ryujinx.Ava.UI.ViewModels
             AppHost.Device.System.SimulateWakeUpMessage();
         }
 
-        public async void LoadApplications()
+        public void LoadApplications()
         {
-            await Dispatcher.UIThread.InvokeAsync(() =>
-            {
-                Applications.Clear();
-
-                StatusBarVisible         = true;
-                StatusBarProgressMaximum = 0;
-                StatusBarProgressValue   = 0;
-
-                LocaleManager.Instance.UpdateAndGetDynamicValue(LocaleKeys.StatusBarGamesLoaded, 0, 0);
-            });
-
             ReloadGameList?.Invoke();
+        }
+
+        public void CancelApplicationLoad()
+        {
+            CancelGameListReload?.Invoke();
         }
 
         public async void OpenFile()

@@ -126,6 +126,8 @@ namespace Ryujinx.Ui.App.Common
                         return;
                     }
 
+                    Thread.Sleep(2000);
+
                     numApplicationsFound -= isValid ? 0 : 1;
                     numApplicationsLoaded += isValid ? 1 : 0;
 
