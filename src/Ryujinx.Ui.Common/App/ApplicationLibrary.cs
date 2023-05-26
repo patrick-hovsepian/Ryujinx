@@ -106,6 +106,8 @@ namespace Ryujinx.Ui.App.Common
                     return;
                 }//*/
 
+                _metadataCache.Clear();
+
                 // Builds the applications list with fileinfo descriptors of found applications
                 IEnumerable<FileInfo> applications = appDirs.SelectMany(appDir => FindApplications(appDir, ref numApplicationsFound));
 
@@ -225,6 +227,7 @@ namespace Ryujinx.Ui.App.Common
             });
 
             int loaded = 0;
+
             foreach (string titleId in existingApplications)
             {
                 ApplicationMetadata appMetadata = LoadAndSaveMetaData(titleId);
