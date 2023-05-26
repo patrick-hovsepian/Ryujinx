@@ -37,7 +37,7 @@ namespace Ryujinx.Ui.App.Common
 {
     public class ApplicationLibrary
     {
-        private const double _oneGibps = 0.000000000931;
+        private static readonly double OneGib = 0.000000000931;
 
         public event EventHandler<ApplicationAddedEventArgs>        ApplicationAdded;
         public event EventHandler<ApplicationCountUpdatedEventArgs> ApplicationCountUpdated;
@@ -93,16 +93,14 @@ namespace Ryujinx.Ui.App.Common
 
         public void LoadApplications(List<string> appDirs, Language desiredTitleLanguage, bool readFromDisk)
         {
-            int numApplicationsFound  = 0;
-            int numApplicationsLoaded = 0;
-
             _desiredTitleLanguage = desiredTitleLanguage;
 
             _cancellationToken = new CancellationTokenSource();
             
+            int numApplicationsFound = 0;
+
             try
             {
-                // account for forced reload
                 if (!readFromDisk && TryLoadApplicationsFromGamesCache())
                 {
                     return;
@@ -116,24 +114,42 @@ namespace Ryujinx.Ui.App.Common
                     return;
                 }
 
+                int numApplicationsLoaded = 0;
+
                 // Loops through applications list, creating a struct and then firing an event containing the struct for each application
                 foreach (FileInfo fileInfo in applications)
                 {
-                    LoadApplicationFromDisk(fileInfo, ref numApplicationsFound, ref numApplicationsLoaded);
-                }
+                    bool isValid = VerifyAndLoadApplicationFileFromDisk(fileInfo, out ApplicationData appData);
 
-                OnApplicationCountUpdated(new ApplicationCountUpdatedEventArgs()
-                {
-                    NumAppsFound = numApplicationsFound,
-                    NumAppsLoaded = numApplicationsLoaded
-                });
+                    if (_cancellationToken.Token.IsCancellationRequested)
+                    {
+                        return;
+                    }
+
+                    numApplicationsFound -= isValid ? 0 : 1;
+                    numApplicationsLoaded += isValid ? 1 : 0;
+
+                    OnApplicationCountUpdated(new ApplicationCountUpdatedEventArgs()
+                    {
+                        NumAppsFound = numApplicationsFound,
+                        NumAppsLoaded = numApplicationsLoaded
+                    });
+
+                    if (isValid)
+                    {
+                        OnApplicationAdded(new ApplicationAddedEventArgs()
+                        {
+                            AppData = appData
+                        });
+                    }
+                }
             }
             finally
             {
                 _cancellationToken.Dispose();
                 _cancellationToken = null;
             }
-        }// end load apps
+        }
 
         private IEnumerable<FileInfo> FindApplications(string appDir, ref int numApplicationsFound)
         {
@@ -152,19 +168,20 @@ namespace Ryujinx.Ui.App.Common
             try
             {
                 List<FileInfo> result = new();
-                IEnumerable<string> matches = Directory.EnumerateFiles(appDir, "*", SearchOption.AllDirectories).Where(file =>
+
+                foreach (string file in Directory.EnumerateFiles(appDir, "*", SearchOption.AllDirectories))
                 {
                     if (_cancellationToken.Token.IsCancellationRequested)
                     {
-                        return false;
+                        return result;
                     }
 
-                    // var fullPath = fileInfo.ResolveLinkTarget(true)?.FullName ?? fileInfo.FullName;
                     var fileInfo = new FileInfo(file);
+
                     string ext = fileInfo.Extension.ToLower();
 
                     bool isApplication =
-                    !fileInfo.Attributes.HasFlag(FileAttributes.Hidden) && 
+                    !fileInfo.Attributes.HasFlag(FileAttributes.Hidden) &&
                     (ext is ".nsp" && ConfigurationState.Instance.Ui.ShownFileTypes.NSP.Value) ||
                     (ext is ".pfs0" && ConfigurationState.Instance.Ui.ShownFileTypes.PFS0.Value) ||
                     (ext is ".xci" && ConfigurationState.Instance.Ui.ShownFileTypes.XCI.Value) ||
@@ -173,14 +190,17 @@ namespace Ryujinx.Ui.App.Common
                     (ext is ".nso" && ConfigurationState.Instance.Ui.ShownFileTypes.NSO.Value);
 
                     if (isApplication)
-                    { 
+                    {
                         result.Add(fileInfo);
+
+                        OnApplicationCountUpdated(new ApplicationCountUpdatedEventArgs()
+                        {
+                            NumAppsFound = ++numApplicationsFound,
+                            NumAppsLoaded = 0
+                        });
                     }
+                }
 
-                    return isApplication;
-                });
-
-                numApplicationsFound += matches.Count();
                 return result;
             }
             catch (UnauthorizedAccessException)
@@ -195,6 +215,14 @@ namespace Ryujinx.Ui.App.Common
         {
             IEnumerable<string> existingApplications = Directory.EnumerateDirectories(AppDataManager.GamesDirPath)
                 .Select(Path.GetFileName);
+
+            int cachedAppsFound = existingApplications.Count();
+
+            OnApplicationCountUpdated(new ApplicationCountUpdatedEventArgs()
+            {
+                NumAppsFound = cachedAppsFound,
+                NumAppsLoaded = 0
+            });
 
             int loaded = 0;
             foreach (string titleId in existingApplications)
@@ -225,7 +253,8 @@ namespace Ryujinx.Ui.App.Common
                     FileSizeBytes = appMetadata.FileSize,
                     Path = appMetadata.HostPath,
 
-                    // TODO: must init on gamelaunch
+                    // TODO: must init on gamelaunch or force user to reload from disk?
+                    // user must force a reload to get this struct used for save/device directory
                     //ControlHolder = controlHolder
                 };
 
@@ -236,25 +265,27 @@ namespace Ryujinx.Ui.App.Common
 
                 OnApplicationCountUpdated(new ApplicationCountUpdatedEventArgs()
                 {
-                    NumAppsFound = ++loaded,
-                    NumAppsLoaded = loaded
+                    NumAppsFound = cachedAppsFound,
+                    NumAppsLoaded = ++loaded
                 });
             }
 
             return loaded > 0;
         }
 
-        private void LoadApplicationFromDisk(FileInfo fileInfo, ref int numApplicationsFound, ref int numApplicationsLoaded)
+        private bool VerifyAndLoadApplicationFileFromDisk(FileInfo fileInfo, out ApplicationData appData)
         {
+            appData = null!;
+
             if (_cancellationToken.Token.IsCancellationRequested)
             {
-                return;
+                return false;
             }
 
             string applicationPath = fileInfo.ResolveLinkTarget(true)?.FullName ?? fileInfo.FullName;
 
-            double fileSize = fileInfo.Length * _oneGibps;
-            string titleName = "Unknown";
+            double fileSize = fileInfo.Length * OneGib;
+            string titleName = Path.GetFileNameWithoutExtension(applicationPath);
             string titleId = "0000000000000000";
             string developer = "Unknown";
             string version = "0";
@@ -316,9 +347,7 @@ namespace Ryujinx.Ui.App.Common
 
                             if (!hasMainNca && !isExeFs)
                             {
-                                numApplicationsFound--;
-
-                                return;
+                                return false;
                             }
                         }
 
@@ -409,9 +438,7 @@ namespace Ryujinx.Ui.App.Common
                     {
                         Logger.Warning?.Print(LogClass.Application, $"The file encountered was not of a valid type. File: '{applicationPath}' Error: {exception}");
 
-                        numApplicationsFound--;
-
-                        return;
+                        return false;
                     }
                 }
                 else if (extension is ".nro")
@@ -452,31 +479,25 @@ namespace Ryujinx.Ui.App.Common
                         else
                         {
                             applicationIcon = _nroIcon;
-                            titleName = Path.GetFileNameWithoutExtension(applicationPath);
-                            titleName = fileInfo.Name;
                         }
                     }
                     catch
                     {
                         Logger.Warning?.Print(LogClass.Application, $"The file encountered was not of a valid type. Errored File: {applicationPath}");
 
-                        numApplicationsFound--;
-
-                        return;
+                        return false;
                     }
                 }
                 else if (extension is ".nca")
                 {
                     try
                     {
-                        Nca nca = new(_virtualFileSystem.KeySet, new FileStream(applicationPath, FileMode.Open, FileAccess.Read).AsStorage());
+                        Nca nca = new(_virtualFileSystem.KeySet, file.AsStorage());
                         int dataIndex = Nca.GetSectionIndexFromType(NcaSectionType.Data, NcaContentType.Program);
 
                         if (nca.Header.ContentType != NcaContentType.Program || (nca.SectionExists(NcaSectionType.Data) && nca.Header.GetFsHeader(dataIndex).IsPatchSection()))
                         {
-                            numApplicationsFound--;
-
-                            return;
+                            return false;
                         }
                     }
                     catch (InvalidDataException)
@@ -487,28 +508,22 @@ namespace Ryujinx.Ui.App.Common
                     {
                         Logger.Warning?.Print(LogClass.Application, $"The file encountered was not of a valid type. Errored File: {applicationPath}");
 
-                        numApplicationsFound--;
-
-                        return;
+                        return false;
                     }
 
                     applicationIcon = _ncaIcon;
-                    titleName = Path.GetFileNameWithoutExtension(applicationPath);
                 }
                 // If its an NSO we just set defaults
                 else if (extension is ".nso")
                 {
                     applicationIcon = _nsoIcon;
-                    titleName = Path.GetFileNameWithoutExtension(applicationPath);
                 }
             }
             catch (IOException exception)
             {
                 Logger.Warning?.Print(LogClass.Application, exception.Message);
 
-                numApplicationsFound--;
-
-                return;
+                return false;
             }
 
             string formattedFileSize = (fileSize < 1) ? (fileSize * 1024).ToString("0.##") + " MiB" : fileSize.ToString("0.##") + " GiB";
@@ -519,7 +534,7 @@ namespace Ryujinx.Ui.App.Common
                 appMetadata.Version = version;
                 appMetadata.Developer = developer;
                 appMetadata.TitleId = titleId;
-                appMetadata.AppIcon = applicationIcon;//Convert.ToBase64String(applicationIcon);
+                appMetadata.AppIcon = applicationIcon; // TODO: scale down?
                 appMetadata.FileType = fileInfo.Extension.ToUpperInvariant()[1..];
                 appMetadata.HostPath = applicationPath;
                 appMetadata.FileSize = fileSize;
@@ -546,7 +561,7 @@ namespace Ryujinx.Ui.App.Common
                 }
             });
 
-            ApplicationData data = new()
+            appData = new()
             {
                 Favorite = appMetadata.Favorite,
                 Icon = applicationIcon,
@@ -564,18 +579,7 @@ namespace Ryujinx.Ui.App.Common
                 ControlHolder = controlHolder
             };
 
-            numApplicationsLoaded++;
-
-            OnApplicationAdded(new ApplicationAddedEventArgs()
-            {
-                AppData = data
-            });
-
-            OnApplicationCountUpdated(new ApplicationCountUpdatedEventArgs()
-            {
-                NumAppsFound = numApplicationsFound,
-                NumAppsLoaded = numApplicationsLoaded
-            });
+            return true;
         }
 
         protected void OnApplicationAdded(ApplicationAddedEventArgs e)

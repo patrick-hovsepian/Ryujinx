@@ -342,6 +342,7 @@ namespace Ryujinx.Ava.UI.ViewModels
             }
         }
 
+        // will need control bit read if cache startup, won't be present
         public bool OpenUserSaveDirectoryEnabled => !Utilities.IsZeros(SelectedApplication.ControlHolder.ByteSpan) && SelectedApplication.ControlHolder.Value.UserAccountSaveDataSize > 0;
 
         public bool OpenDeviceSaveDirectoryEnabled => !Utilities.IsZeros(SelectedApplication.ControlHolder.ByteSpan) && SelectedApplication.ControlHolder.Value.DeviceSaveDataSize > 0;

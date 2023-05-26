@@ -98,14 +98,15 @@ namespace Ryujinx.Ava.UI.Windows
 
                 ViewModel.RefreshFirmwareStatus();
 
-                LoadGameList();
+                // TODO: use config state
+                LoadApplications(false);
 
                 this.GetObservable(IsActiveProperty).Subscribe(IsActiveChanged);
             }
 
             ApplicationLibrary.ApplicationCountUpdated += ApplicationLibrary_ApplicationCountUpdated;
             ApplicationLibrary.ApplicationAdded += ApplicationLibrary_ApplicationAdded;
-            ViewModel.ReloadGameList += () => ReloadGameList(true);
+            ViewModel.ReloadGameList += ViewModel_ReloadGameList;
 
             NotificationHelper.SetNotificationManager(this);
         }
@@ -113,20 +114,6 @@ namespace Ryujinx.Ava.UI.Windows
         private void IsActiveChanged(bool obj)
         {
             ViewModel.IsActive = obj;
-        }
-
-        public void LoadGameList()
-        {
-            if (_isLoading)
-            {
-                return;
-            }
-
-            _isLoading = true;
-
-            LoadApplications(false);
-
-            _isLoading = false;
         }
 
         protected override void HandleScalingChanged(double scale)
@@ -167,6 +154,11 @@ namespace Ryujinx.Ava.UI.Windows
                     StatusBarView.LoadProgressBar.IsVisible = false;
                 }
             });
+        }
+
+        private void ViewModel_ReloadGameList()
+        {
+            ReloadGameList(true);
         }
 
         public void Application_Opened(object sender, ApplicationOpenedEventArgs args)
