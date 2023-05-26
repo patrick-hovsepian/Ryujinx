@@ -126,7 +126,7 @@ namespace Ryujinx.Ui.App.Common
                         return;
                     }
 
-                    Thread.Sleep(2000);
+                    Thread.Sleep(Random.Shared.Next(100, 1500));
 
                     numApplicationsFound -= isValid ? 0 : 1;
                     numApplicationsLoaded += isValid ? 1 : 0;

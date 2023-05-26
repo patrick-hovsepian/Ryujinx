@@ -37,8 +37,8 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition />
 					<ColumnDefinition Width="Auto" />
+                    <ColumnDefinition />
                 </Grid.ColumnDefinitions>
                 <Button
                     Width="25"
@@ -60,17 +60,8 @@
                     VerticalAlignment="Center"
                     IsVisible="{Binding EnableNonGameRunningControls}"
                     Text="{locale:Locale StatusBarGamesLoaded}" />
-				<ProgressBar
-                    Name="LoadProgressBar"
-                    Grid.Column="2"
-                    Height="6"
-                    VerticalAlignment="Center"
-                    Foreground="{DynamicResource HighlightColor}"
-                    IsVisible="{Binding StatusBarVisible}"
-                    Maximum="{Binding StatusBarProgressMaximum}"
-                    Value="{Binding StatusBarProgressValue}" />
 				<Button
-					Grid.Column="3"
+					Grid.Column="2"
                     Width="25"
                     Height="25"
                     MinWidth="0"
@@ -84,6 +75,15 @@
                         Height="100"
                         Symbol="Cancel" />
 				</Button>
+				<ProgressBar
+                    Name="LoadProgressBar"
+                    Grid.Column="3"
+                    Height="6"
+                    VerticalAlignment="Center"
+                    Foreground="{DynamicResource HighlightColor}"
+                    IsVisible="{Binding StatusBarVisible}"
+                    Maximum="{Binding StatusBarProgressMaximum}"
+                    Value="{Binding StatusBarProgressValue}" />
             </Grid>
         </StackPanel>
         <StackPanel

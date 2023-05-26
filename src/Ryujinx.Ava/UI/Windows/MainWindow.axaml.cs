@@ -98,8 +98,10 @@ namespace Ryujinx.Ava.UI.Windows
 
                 ViewModel.RefreshFirmwareStatus();
 
-                // TODO: use config state
-                LoadApplications(false);
+                _ = Task.Run(() =>
+                {
+                    LoadApplications(!ConfigurationState.Instance.LoadFromCacheOnStartup.Value);
+                });
 
                 this.GetObservable(IsActiveProperty).Subscribe(IsActiveChanged);
             }
