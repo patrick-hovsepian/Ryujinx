@@ -481,8 +481,9 @@ namespace Ryujinx.Ava.UI.Windows
             {
                 ViewModel.Applications.Clear();
 
-                StatusBarView.LoadProgressBar.IsVisible = true;
                 ViewModel.LoadApplicationsSymbol        = Symbol.Cancel;
+                StatusBarView.LoadProgressBar.IsVisible = true;
+
                 ViewModel.StatusBarProgressMaximum      = 0;
                 ViewModel.StatusBarProgressValue        = 0;
 

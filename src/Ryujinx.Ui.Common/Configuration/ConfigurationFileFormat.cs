@@ -161,6 +161,9 @@ namespace Ryujinx.Ui.Common.Configuration
         /// </summary>
         public bool ShowConfirmExit { get; set; }
 
+        /// <summary>
+        /// Load Applications from Cache on Startup
+        /// </summary>
         public bool LoadFromCacheOnStartup { get; set; }
 
         /// <summary>

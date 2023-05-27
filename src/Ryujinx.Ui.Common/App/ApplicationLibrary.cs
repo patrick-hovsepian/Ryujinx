@@ -100,11 +100,11 @@ namespace Ryujinx.Ui.App.Common
                 if (!readFromDisk && TryLoadApplicationsFromGamesCache())
                 {
                     return;
-                }//*/
+                }
 
                 _metadataCache.Clear();
 
-                Logger.Warning?.Print(LogClass.Application, $"Starting iteration");
+                Logger.Debug?.Print(LogClass.Application, "Loading applications from disk");
 
                 // Builds the applications list with fileinfo descriptors of found applications
                 IEnumerable<FileInfo> applications = appDirs.SelectMany(appDir => FindApplications(appDir, ref numApplicationsFound));
@@ -125,8 +125,6 @@ namespace Ryujinx.Ui.App.Common
                     {
                         return;
                     }
-
-                    Thread.Sleep(Random.Shared.Next(100, 1500));
 
                     numApplicationsFound -= isValid ? 0 : 1;
                     numApplicationsLoaded += isValid ? 1 : 0;
@@ -221,10 +219,11 @@ namespace Ryujinx.Ui.App.Common
 
         private bool TryLoadApplicationsFromGamesCache()
         {
-            IEnumerable<string> existingApplications = Directory.EnumerateDirectories(AppDataManager.GamesDirPath)
-                .Select(Path.GetFileName);
+            List<string> existingApplications = Directory.EnumerateDirectories(AppDataManager.GamesDirPath)
+                .Select(Path.GetFileName)
+                .ToList();
 
-            int cachedAppsFound = existingApplications.Count();
+            int cachedAppsFound = existingApplications.Count;
 
             OnApplicationCountUpdated(new ApplicationCountUpdatedEventArgs()
             {
@@ -240,9 +239,8 @@ namespace Ryujinx.Ui.App.Common
 
                 if (string.IsNullOrWhiteSpace(appMetadata.TitleId)) 
                 {
-                    Logger.Warning?.Print(LogClass.Application, $"Outdated metadata file found for: {titleId}");
+                    Logger.Warning?.Print(LogClass.Application, $"Outdated cached metadata file found for: {titleId}");
 
-                    // increment counters? must force user refresh
                     continue;
                 }
 
