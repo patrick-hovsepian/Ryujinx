@@ -22,7 +22,6 @@ namespace Ryujinx.Ui.App.Common
         public string Developer { get; set; }
         public string Version { get; set; }
         public byte[] AppIcon { get; set; }
-
         public double FileSize { get; set; }
     }
 }

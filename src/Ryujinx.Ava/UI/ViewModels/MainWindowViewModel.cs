@@ -5,6 +5,7 @@ using Avalonia.Media;
 using Avalonia.Threading;
 using DynamicData;
 using DynamicData.Binding;
+using FluentAvalonia.UI.Controls;
 using LibHac.Common;
 using Ryujinx.Ava.Common;
 using Ryujinx.Ava.Common.Locale;
@@ -77,7 +78,7 @@ namespace Ryujinx.Ava.UI.ViewModels
         private bool _showAll;
         private string _lastScannedAmiiboId;
         private bool _statusBarVisible;
-        private bool _cancelLoadVisible;
+        private Symbol _loadApplicationSymbol;
         private ReadOnlyObservableCollection<ApplicationData> _appsObservableList;
 
         private string _showUiKey = "F4";
@@ -101,7 +102,6 @@ namespace Ryujinx.Ava.UI.ViewModels
         public ApplicationData GridSelectedApplication;
 
         public event Action ReloadGameList;
-        public event Action CancelGameListReload;
 
         private string TitleName { get; set; }
         internal AppHost AppHost { get; set; }
@@ -241,12 +241,12 @@ namespace Ryujinx.Ava.UI.ViewModels
             }
         }
 
-        public bool CancelRefreshButtonVisbile
+        public Symbol LoadApplicationsSymbol
         {
-            get => _cancelLoadVisible;
+            get => _loadApplicationSymbol;
             set
             {
-                _cancelLoadVisible = value;
+                _loadApplicationSymbol = value;
 
                 OnPropertyChanged();
             }
@@ -271,7 +271,7 @@ namespace Ryujinx.Ava.UI.ViewModels
                 OnPropertyChanged();
                 OnPropertyChanged(nameof(EnableNonGameRunningControls));
                 OnPropertyChanged(nameof(StatusBarVisible));
-                OnPropertyChanged(nameof(CancelRefreshButtonVisbile));
+                OnPropertyChanged(nameof(LoadApplicationsSymbol));
                 OnPropertyChanged(nameof(ShowFirmwareStatus));
             }
         }
@@ -1382,11 +1382,6 @@ namespace Ryujinx.Ava.UI.ViewModels
         public void LoadApplications()
         {
             ReloadGameList?.Invoke();
-        }
-
-        public void CancelApplicationLoad()
-        {
-            CancelGameListReload?.Invoke();
         }
 
         public async void OpenFile()

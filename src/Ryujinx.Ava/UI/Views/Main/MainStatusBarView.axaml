@@ -37,7 +37,6 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
-					<ColumnDefinition Width="Auto" />
                     <ColumnDefinition />
                 </Grid.ColumnDefinitions>
                 <Button
@@ -51,7 +50,7 @@
                     <ui:SymbolIcon
                         Width="50"
                         Height="100"
-                        Symbol="Refresh" />
+                        Symbol="{Binding LoadApplicationsSymbol}" />
                 </Button>
                 <TextBlock
                     Name="LoadStatus"
@@ -60,24 +59,9 @@
                     VerticalAlignment="Center"
                     IsVisible="{Binding EnableNonGameRunningControls}"
                     Text="{locale:Locale StatusBarGamesLoaded}" />
-				<Button
-					Grid.Column="2"
-                    Width="25"
-                    Height="25"
-                    MinWidth="0"
-                    Margin="0,0,5,0"
-                    VerticalAlignment="Center"
-                    Background="Transparent"
-					IsVisible="{Binding CancelRefreshButtonVisbile}"
-                    Command="{ReflectionBinding CancelApplicationLoad}">
-					<ui:SymbolIcon
-                        Width="50"
-                        Height="100"
-                        Symbol="Cancel" />
-				</Button>
 				<ProgressBar
                     Name="LoadProgressBar"
-                    Grid.Column="3"
+                    Grid.Column="2"
                     Height="6"
                     VerticalAlignment="Center"
                     Foreground="{DynamicResource HighlightColor}"

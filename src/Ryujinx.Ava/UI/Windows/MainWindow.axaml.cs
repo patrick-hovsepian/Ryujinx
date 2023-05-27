@@ -109,7 +109,6 @@ namespace Ryujinx.Ava.UI.Windows
             ApplicationLibrary.ApplicationCountUpdated += ApplicationLibrary_ApplicationCountUpdated;
             ApplicationLibrary.ApplicationAdded += ApplicationLibrary_ApplicationAdded;
             ViewModel.ReloadGameList += ViewModel_LoadApplications;
-            ViewModel.CancelGameListReload += CancelLoadApplications;
 
             NotificationHelper.SetNotificationManager(this);
         }
@@ -150,19 +149,32 @@ namespace Ryujinx.Ava.UI.Windows
                 if (e.NumAppsFound == 0)
                 {
                     StatusBarView.LoadProgressBar.IsVisible = false;
-                    ViewModel.CancelRefreshButtonVisbile = false;
+                    ViewModel.LoadApplicationsSymbol = Symbol.Refresh;
                 }
 
                 if (e.NumAppsLoaded == e.NumAppsFound)
                 {
                     StatusBarView.LoadProgressBar.IsVisible = false;
-                    ViewModel.CancelRefreshButtonVisbile = false;
+                    ViewModel.LoadApplicationsSymbol = Symbol.Refresh;
                 }
             });
         }
 
         private void ViewModel_LoadApplications()
         {
+            if (_isLoading)
+            {
+                ApplicationLibrary.CancelLoading();
+
+                Dispatcher.UIThread.Post(() =>
+                {
+                    StatusBarView.LoadProgressBar.IsVisible = false;
+                    ViewModel.LoadApplicationsSymbol = Symbol.Refresh;
+                });
+
+                return;
+            }
+
             _ = Task.Run(() =>
             {
                 LoadApplications(true);
@@ -469,7 +481,7 @@ namespace Ryujinx.Ava.UI.Windows
                 ViewModel.Applications.Clear();
 
                 StatusBarView.LoadProgressBar.IsVisible = true;
-                ViewModel.CancelRefreshButtonVisbile    = true;
+                ViewModel.LoadApplicationsSymbol        = Symbol.Cancel;
                 ViewModel.StatusBarProgressMaximum      = 0;
                 ViewModel.StatusBarProgressValue        = 0;
 
@@ -477,22 +489,6 @@ namespace Ryujinx.Ava.UI.Windows
             });
 
             ReloadGameList(readFromDisk);
-        }
-
-        public void CancelLoadApplications()
-        {
-            if (!_isLoading)
-            {
-                return;
-            }
-
-            Dispatcher.UIThread.Post(() =>
-            {
-                StatusBarView.LoadProgressBar.IsVisible = false;
-                ViewModel.CancelRefreshButtonVisbile = false;
-            });
-
-            ApplicationLibrary.CancelLoading();
         }
 
         private void ReloadGameList(bool readFromDisk)
