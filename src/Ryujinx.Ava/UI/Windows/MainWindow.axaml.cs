@@ -23,6 +23,7 @@ using Ryujinx.Ui.Common.Helper;
 using System;
 using System.ComponentModel;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using InputManager = Ryujinx.Input.HLE.InputManager;
 
@@ -98,6 +99,12 @@ namespace Ryujinx.Ava.UI.Windows
 
                 ViewModel.RefreshFirmwareStatus();
 
+                ApplicationLibrary_ApplicationCountUpdated(null!, new()
+                {
+                    NumAppsFound = 0,
+                    NumAppsLoaded = 0
+                });
+
                 _ = Task.Run(() =>
                 {
                     LoadApplications(!ConfigurationState.Instance.LoadFromCacheOnStartup.Value);
@@ -146,13 +153,7 @@ namespace Ryujinx.Ava.UI.Windows
                 ViewModel.StatusBarProgressValue   = e.NumAppsLoaded;
                 ViewModel.StatusBarProgressMaximum = e.NumAppsFound;
 
-                if (e.NumAppsFound == 0)
-                {
-                    StatusBarView.LoadProgressBar.IsVisible = false;
-                    ViewModel.LoadApplicationsSymbol = Symbol.Refresh;
-                }
-
-                if (e.NumAppsLoaded == e.NumAppsFound)
+                if ((e.NumAppsFound == 0) || (e.NumAppsLoaded == e.NumAppsFound))
                 {
                     StatusBarView.LoadProgressBar.IsVisible = false;
                     ViewModel.LoadApplicationsSymbol = Symbol.Refresh;

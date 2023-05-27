@@ -145,6 +145,12 @@ namespace Ryujinx.Ui.App.Common
                         });
                     }
                 }
+
+                OnApplicationCountUpdated(new ApplicationCountUpdatedEventArgs()
+                {
+                    NumAppsFound = numApplicationsFound,
+                    NumAppsLoaded = numApplicationsLoaded
+                });
             }
             finally
             {
