@@ -66,7 +66,6 @@ namespace Ryujinx.Ui.Widgets
                 return;
             }
 
-            // TODO: showing save data will be greyed out till a reload from disk occurs
             _openSaveUserDirMenuItem.Sensitive   = !Utilities.IsZeros(controlData.ByteSpan) && controlData.Value.UserAccountSaveDataSize      > 0;
             _openSaveDeviceDirMenuItem.Sensitive = !Utilities.IsZeros(controlData.ByteSpan) && controlData.Value.DeviceSaveDataSize           > 0;
             _openSaveBcatDirMenuItem.Sensitive   = !Utilities.IsZeros(controlData.ByteSpan) && controlData.Value.BcatDeliveryCacheStorageSize > 0;
