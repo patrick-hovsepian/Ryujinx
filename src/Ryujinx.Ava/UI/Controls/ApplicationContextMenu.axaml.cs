@@ -325,13 +325,23 @@ namespace Ryujinx.Ava.UI.Controls
             }
         }
 
+        public void RunApplication_Click(object sender, RoutedEventArgs args)
+        {
+            var viewModel = (sender as MenuItem)?.DataContext as MainWindowViewModel;
+
+            if (viewModel?.SelectedApplication != null)
+            {
+                viewModel.LoadApplication(viewModel.SelectedApplication.Path);
+            }
+        }
+
         public void BackupSaveData_Click(object sender, RoutedEventArgs args)
         {
             if (sender is not MenuItem { DataContext: MainWindowViewModel { SelectedApplication: ApplicationData selectedApp } })
             {
                 return;
             }
-            
+
             if (!ulong.TryParse(selectedApp.TitleId, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong titleIdNumber))
             {
                 _ = Dispatcher.UIThread.InvokeAsync(async () =>
@@ -342,7 +352,7 @@ namespace Ryujinx.Ava.UI.Controls
             }
 
             _ = Task.Run(async () => {
-                await ApplicationHelper.BackupSaveData(titleIdNumber); 
+                await ApplicationHelper.BackupSaveData(titleIdNumber);
             });
         }
     }

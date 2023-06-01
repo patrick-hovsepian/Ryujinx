@@ -291,6 +291,7 @@
   "ControllerSettingsSaveProfileToolTip": "Save Profile",
   "MenuBarFileToolsTakeScreenshot": "Take Screenshot",
   "MenuBarFileToolsHideUi": "Hide UI",
+  "GameListContextMenuRunApplication": "Run Application",
   "GameListContextMenuToggleFavorite": "Toggle Favorite",
   "GameListContextMenuToggleFavoriteToolTip": "Toggle Favorite status of Game",
   "SettingsTabGeneralTheme": "Theme",
