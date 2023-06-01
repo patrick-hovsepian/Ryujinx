@@ -79,9 +79,9 @@
     </MenuItem>
 	<MenuItem Header="Save Management">
 		<MenuItem
-            Click="BackupSaveData_Click"
-            Header="Backup Save Data"
-			IsEnabled="True"
-            ToolTip.Tip="Create a zip file that contains the saves for the currently active profile" />
+		Click="BackupSaveData_Click"
+		Header="{locale:Locale GameListContextMenuBackupUserSaveData}"
+		IsEnabled="True"
+		ToolTip.Tip="{locale:Locale GameListContextMenuBackupUserSaveDataToolTip}" />
 	</MenuItem>
 </MenuFlyout>
