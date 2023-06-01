@@ -325,7 +325,7 @@ namespace Ryujinx.Ava.UI.Controls
             }
         }
 
-        public async void BackupSaveData_Click(object sender, RoutedEventArgs args)
+        public void BackupSaveData_Click(object sender, RoutedEventArgs args)
         {
             if (!(sender is MenuItem { DataContext: MainWindowViewModel { SelectedApplication: ApplicationData selectedApp } }))
             {
