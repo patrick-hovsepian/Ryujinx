@@ -1,8 +1,10 @@
 using Avalonia.Controls;
 using Avalonia.Controls.Notifications;
 using Avalonia.Threading;
+using DiscordRPC;
 using LibHac;
 using LibHac.Account;
+using LibHac.Bcat;
 using LibHac.Common;
 using LibHac.Fs;
 using LibHac.Fs.Fsa;
@@ -421,25 +423,54 @@ namespace Ryujinx.Ava.Common
 
         public static async Task<bool> BackupSaveData(ulong titleId)
         {
-            var saveTasks = await Task.WhenAll(
-                BackupApplication(titleId, SaveDataType.Account),
-                // always use default uid for bcat and device data
-                BackupApplication(titleId, SaveDataType.Bcat),
-                BackupApplication(titleId, SaveDataType.Device));
+            var userId = new LibHac.Fs.UserId((ulong)_accountManager.LastOpenedUser.UserId.High, (ulong)_accountManager.LastOpenedUser.UserId.Low);
+         
+            // /backup/user/[userid]/[titleId]/[saveType]_backup.zip
+            // /backup/[titleid]/[userid]/
+            var backupRootDirectory = Path.Combine(AppDataManager.BackupDirPath, titleId.ToString(), userId.ToString());
 
+            // Temp is where all save data will be moved to as an intermediate directory before beign zipped and cleaned up
+            // /backup/[titleid]/[userid]/[date]/temp
+            var currDate = DateTime.UtcNow.ToString("yyyy-MM-dd");
+            var backupTempDir = Path.Combine(backupRootDirectory, currDate, "temp");
+            if (Directory.Exists(backupTempDir)) 
+            {
+                Directory.Delete(backupTempDir, true);
+            }
             
-            return true;
+            Directory.CreateDirectory(backupTempDir);
+
+            // Move all application save data for the user, account, and device to the temp folder
+            // TODO: use cancellation token for better bail out since they're running in parallel
+            var copyBackupFiles = await Task.WhenAll(
+                CopySaveDataToTemp(titleId, userId, SaveDataType.Account, backupTempDir),
+                // always use default uid for bcat and device data -- there's only one instance per combination of application and device
+                CopySaveDataToTemp(titleId, userId: default, SaveDataType.Bcat, backupTempDir),
+                CopySaveDataToTemp(titleId, userId: default, SaveDataType.Device, backupTempDir));
+
+            if (copyBackupFiles.Any(outcome => outcome is false))
+            {
+                Directory.Delete(Path.Combine(backupTempDir, ".."), true);
+                return false;
+            }
+
+            // Zip up the save data and delete the temp
+            var backupFile = Path.Combine(backupRootDirectory, $"{currDate}_{titleId}_save.zip");
+            var result = CreateApplicationSaveBackupZip(titleId, backupTempDir, backupFile);
+            Directory.Delete(Path.Combine(backupTempDir, ".."), true);
+
+            if (result)
+            {
+                OpenHelper.OpenFolder(backupRootDirectory);
+            }
+
+            return result;
         }
 
-        public static async Task<bool> BackupApplication(ulong titleId, SaveDataType saveType)
+        public static async Task<bool> CopySaveDataToTemp(ulong titleId, LibHac.Fs.UserId userId, SaveDataType saveType, string backupTempDirectory)
         {
-            var userId = new LibHac.Fs.UserId((ulong)_accountManager.LastOpenedUser.UserId.High, (ulong)_accountManager.LastOpenedUser.UserId.Low);
-            var actingId = saveType is SaveDataType.Account
-                ? userId
-                : default;
-
             // save with the user metadata to avoid having to do lookups with libhac?
-            var saveDataFilter = SaveDataFilter.Make(titleId, saveType, actingId, saveDataId: default, index: default);
+            var saveDataFilter = SaveDataFilter.Make(titleId, saveType, userId, saveDataId: default, index: default);
 
             var result = _horizonClient.Fs.FindSaveDataWithFilter(out var saveDataInfo, SaveDataSpaceId.User, in saveDataFilter);
             if (result.IsFailure())
@@ -462,27 +493,63 @@ namespace Ryujinx.Ava.Common
 
             // Find the most recent version of the data, there is a commited (0) and working (1) paths directory
             string saveRootPath = FindValidSaveDir(saveDataInfo.SaveDataId);
+            var copyDestPath = Path.Combine(backupTempDirectory, saveType.ToString());
 
-            // /backup/user/[userid]/[titleId]/[saveType]_backup.zip
-            // /backup/[titleid]/[userid]/
-            var backupDestination = Path.Combine(AppDataManager.BackupDirPath, "user", userId.ToString(), titleId.ToString(), DateTime.UtcNow.ToString("yyyy-MM-dd"));
-            Directory.CreateDirectory(backupDestination);
-
-            var backupFullPath = Path.Combine(backupDestination, $"{saveType}_backup.zip");
-
-            return true;
+            return await CopyDirectoryAsync(saveRootPath, copyDestPath);
         }
 
-        public static bool CreateApplicationSaveBackupZip(ulong titleId, string saveRootPath, string backupFullPath)
+        public static async Task<bool> CopyDirectoryAsync(string sourceDirectory, string destDirectory)
+        {
+            bool result = true;
+            Directory.CreateDirectory(destDirectory);
+
+            foreach (string filename in Directory.EnumerateFileSystemEntries(sourceDirectory))
+            {
+                var itemDest = Path.Combine(destDirectory, Path.GetFileName(filename));
+                var attrs = File.GetAttributes(filename);
+
+                result &= attrs switch 
+                { 
+                    _ when ((attrs & FileAttributes.Directory) == FileAttributes.Directory) => await CopyDirectoryAsync(filename, itemDest),
+                    _ => await CopyFileAsync(filename, itemDest)
+                };
+
+                if (!result)
+                {
+                    break;
+                }
+            }
+
+            return result;
+
+            static async Task<bool> CopyFileAsync(string source, string destination)
+            {
+                try
+                {
+                    using FileStream sourceStream = File.Open(source, FileMode.Open);
+                    using FileStream destinationStream = File.Create(destination);
+
+                    await sourceStream.CopyToAsync(destinationStream);
+                    return true;
+                }
+                catch (Exception ex) 
+                {
+                    // TODO: log
+                    return false;
+                }
+            }
+        }
+
+        public static bool CreateApplicationSaveBackupZip(ulong titleId, string sourceDataPath, string backupDestinationFullPath)
         {
             try
             {
-                if (File.Exists(backupFullPath)) 
+                if (File.Exists(backupDestinationFullPath)) 
                 { 
-                    File.Delete(backupFullPath);
+                    File.Delete(backupDestinationFullPath);
                 }
 
-                ZipFile.CreateFromDirectory(saveRootPath, backupFullPath, CompressionLevel.SmallestSize, false);
+                ZipFile.CreateFromDirectory(sourceDataPath, backupDestinationFullPath, CompressionLevel.SmallestSize, false);
                 return true;
             }
             catch (Exception ex)
