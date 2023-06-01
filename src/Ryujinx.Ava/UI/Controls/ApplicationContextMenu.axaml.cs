@@ -327,11 +327,11 @@ namespace Ryujinx.Ava.UI.Controls
 
         public void BackupSaveData_Click(object sender, RoutedEventArgs args)
         {
-            if (!(sender is MenuItem { DataContext: MainWindowViewModel { SelectedApplication: ApplicationData selectedApp } }))
+            if (sender is not MenuItem { DataContext: MainWindowViewModel { SelectedApplication: ApplicationData selectedApp } })
             {
                 return;
             }
-
+            
             if (!ulong.TryParse(selectedApp.TitleId, NumberStyles.HexNumber, CultureInfo.InvariantCulture, out ulong titleIdNumber))
             {
                 _ = Dispatcher.UIThread.InvokeAsync(async () =>
