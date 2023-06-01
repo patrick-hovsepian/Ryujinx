@@ -116,6 +116,11 @@ namespace Ryujinx.Ava.Common
 
         public static void OpenSaveDir(ulong saveDataId)
         {
+            OpenHelper.OpenFolder(FindValidSaveDir(saveDataId));
+        }
+
+        public static string FindValidSaveDir(ulong saveDataId)
+        {
             string saveRootPath = Path.Combine(_virtualFileSystem.GetNandPath(), $"user/save/{saveDataId:x16}");
 
             if (!Directory.Exists(saveRootPath))
@@ -124,25 +129,24 @@ namespace Ryujinx.Ava.Common
                 Directory.CreateDirectory(saveRootPath);
             }
 
-            string committedPath = Path.Combine(saveRootPath, "0");
-            string workingPath = Path.Combine(saveRootPath, "1");
+            // commited expected to be at /0, otherwise working is /1
+            string attemptPath = Path.Combine(saveRootPath, "0");
 
             // If the committed directory exists, that path will be loaded the next time the savedata is mounted
-            if (Directory.Exists(committedPath))
+            if (Directory.Exists(attemptPath))
             {
-                OpenHelper.OpenFolder(committedPath);
+                return attemptPath;
             }
-            else
+            
+            // If the working directory exists and the committed directory doesn't,
+            // the working directory will be loaded the next time the savedata is mounted
+            attemptPath = Path.Combine(saveRootPath, "1");
+            if (!Directory.Exists(attemptPath))
             {
-                // If the working directory exists and the committed directory doesn't,
-                // the working directory will be loaded the next time the savedata is mounted
-                if (!Directory.Exists(workingPath))
-                {
-                    Directory.CreateDirectory(workingPath);
-                }
+                Directory.CreateDirectory(attemptPath);
+            }
 
-                OpenHelper.OpenFolder(workingPath);
-            }
+            return attemptPath;
         }
 
         public static async Task ExtractSection(NcaSectionType ncaSectionType, string titleFilePath, string titleName, int programIndex = 0)
@@ -423,7 +427,8 @@ namespace Ryujinx.Ava.Common
                 BackupApplication(titleId, SaveDataType.Bcat),
                 BackupApplication(titleId, SaveDataType.Device));
 
-            return saveTasks.All(outcome => outcome is true);
+            
+            return true;
         }
 
         public static async Task<bool> BackupApplication(ulong titleId, SaveDataType saveType)
@@ -433,6 +438,7 @@ namespace Ryujinx.Ava.Common
                 ? userId
                 : default;
 
+            // save with the user metadata to avoid having to do lookups with libhac?
             var saveDataFilter = SaveDataFilter.Make(titleId, saveType, actingId, saveDataId: default, index: default);
 
             var result = _horizonClient.Fs.FindSaveDataWithFilter(out var saveDataInfo, SaveDataSpaceId.User, in saveDataFilter);
@@ -448,25 +454,27 @@ namespace Ryujinx.Ava.Common
                 // Postback instead of throwing UI error?
                 _ = Dispatcher.UIThread.InvokeAsync(async () =>
                 {
-                    await ContentDialogHelper.CreateErrorDialog(LocaleManager.Instance.UpdateAndGetDynamicValue(LocaleKeys.DialogMessageFindSaveErrorMessage, result.ToStringWithName()));
+                    await ContentDialogHelper.CreateErrorDialog(LocaleManager.Instance.UpdateAndGetDynamicValue(LocaleKeys.DialogMessageFindSaveErrorMessage, "No save data found"));
                 });
 
                 return false;
             }
 
-            string saveRootPath = Path.Combine(_virtualFileSystem.GetNandPath(), $"user/save/{saveDataInfo.SaveDataId:x16}");
-            if (!Directory.Exists(saveRootPath))
-            {
-                // there's no save data anyway
-                return true;
-            }
+            // Find the most recent version of the data, there is a commited (0) and working (1) paths directory
+            string saveRootPath = FindValidSaveDir(saveDataInfo.SaveDataId);
 
             // /backup/user/[userid]/[titleId]/[saveType]_backup.zip
+            // /backup/[titleid]/[userid]/
             var backupDestination = Path.Combine(AppDataManager.BackupDirPath, "user", userId.ToString(), titleId.ToString(), DateTime.UtcNow.ToString("yyyy-MM-dd"));
             Directory.CreateDirectory(backupDestination);
 
             var backupFullPath = Path.Combine(backupDestination, $"{saveType}_backup.zip");
 
+            return true;
+        }
+
+        public static bool CreateApplicationSaveBackupZip(ulong titleId, string saveRootPath, string backupFullPath)
+        {
             try
             {
                 if (File.Exists(backupFullPath)) 
@@ -475,17 +483,11 @@ namespace Ryujinx.Ava.Common
                 }
 
                 ZipFile.CreateFromDirectory(saveRootPath, backupFullPath, CompressionLevel.SmallestSize, false);
-
-                if (saveType is SaveDataType.Account)
-                {
-                    OpenHelper.OpenFolder(backupDestination);
-                }
-
                 return true;
             }
             catch (Exception ex)
             {
-                Logger.Error?.Print(LogClass.Application, $"Failed to backup {saveType} directory for {titleId}.\n{ex.Message}");
+                Logger.Error?.Print(LogClass.Application, $"Failed to backup save data for {titleId}.\n{ex.Message}");
                 return false;
             }
         }
