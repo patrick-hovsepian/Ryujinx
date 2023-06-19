@@ -70,7 +70,8 @@
                                     HorizontalAlignment="Stretch"
                                     VerticalAlignment="Top"
                                     Source="{Binding Icon, Converter={StaticResource ByteImage}}" />
-                                <Panel
+                                <StackPanel
+                                    Orientation="Vertical"
                                     Grid.Row="1"
                                     Height="50"
                                     Margin="0,10,0,0"
@@ -83,7 +84,20 @@
                                         Text="{Binding TitleName}"
                                         TextAlignment="Center"
                                         TextWrapping="Wrap" />
-                                </Panel>
+									<TextBlock
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding LastPlayedString}"
+                                        TextAlignment="Center"
+                                        TextWrapping="Wrap" />
+							        <TextBlock
+                                        HorizontalAlignment="Stretch"
+                                        VerticalAlignment="Center"
+                                        Text="{Binding TimePlayed}"
+                                        TextAlignment="Center"
+                                        TextWrapping="Wrap" />
+								    
+                                </StackPanel>
                             </Grid>
                         </Border>
                         <ui:SymbolIcon
