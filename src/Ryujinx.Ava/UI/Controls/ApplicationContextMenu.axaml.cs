@@ -333,5 +333,10 @@ namespace Ryujinx.Ava.UI.Controls
                 viewModel.LoadApplication(viewModel.SelectedApplication.Path);
             }
         }
+
+        public void GetInfo_Click(object sender, RoutedEventArgs args)
+        {
+
+        }
     }
 }

@@ -290,6 +290,7 @@
   "MenuBarFileToolsTakeScreenshot": "Take Screenshot",
   "MenuBarFileToolsHideUi": "Hide UI",
   "GameListContextMenuRunApplication": "Run Application",
+  "GameListContextMenuGetInfo": "Get Info",
   "GameListContextMenuToggleFavorite": "Toggle Favorite",
   "GameListContextMenuToggleFavoriteToolTip": "Toggle Favorite status of Game",
   "SettingsTabGeneralTheme": "Theme",
